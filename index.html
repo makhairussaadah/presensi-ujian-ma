@@ -5,48 +5,58 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Presensi Ujian - Madrasah Aliyah Khairussa'adah Kubu</title>
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#15803d">
-<link rel="apple-touch-icon" href="logo.png">
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
 body{
-  font-family: 'Segoe UI', sans-serif;
   margin:0;
-  background:#f4f6f9;
+  font-family:'Segoe UI',sans-serif;
+  background:#eef7f1;
 }
 
 header{
-  background:#1e3a8a;
+  background:linear-gradient(135deg,#15803d,#22c55e);
   color:white;
-  padding:15px;
+  padding:20px;
   text-align:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
 }
+
+header h2{margin:0;}
+header p{margin:5px 0 0;font-size:14px;}
 
 .container{
   padding:20px;
-  max-width:1000px;
+  max-width:600px;
   margin:auto;
 }
 
+.card{
+  background:white;
+  padding:20px;
+  border-radius:15px;
+  box-shadow:0 5px 20px rgba(0,0,0,0.1);
+  margin-bottom:20px;
+}
+
 select,button{
-  padding:10px;
-  margin:5px 0;
   width:100%;
-  border-radius:6px;
-  border:1px solid #ccc;
+  padding:12px;
+  margin-top:10px;
+  border-radius:10px;
+  border:1px solid #ddd;
   font-size:14px;
 }
 
 button{
-  background:#1e3a8a;
+  background:#15803d;
   color:white;
-  cursor:pointer;
+  border:none;
+  font-weight:bold;
 }
 
 button:hover{
-  background:#162d6b;
+  background:#166534;
 }
 
 #reader{
@@ -54,18 +64,16 @@ button:hover{
 }
 
 .dashboard{
-  margin-top:15px;
-  background:white;
-  padding:15px;
-  border-radius:8px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  text-align:center;
+  font-size:18px;
+  font-weight:bold;
+  color:#15803d;
 }
 
 .modal{
   display:none;
   position:fixed;
-  top:0; left:0;
-  width:100%; height:100%;
+  inset:0;
   background:rgba(0,0,0,0.5);
   justify-content:center;
   align-items:center;
@@ -73,28 +81,22 @@ button:hover{
 
 .modal-content{
   background:white;
-  padding:20px;
-  border-radius:10px;
+  padding:25px;
+  border-radius:15px;
   width:90%;
-  max-width:400px;
+  max-width:350px;
   text-align:center;
-  animation:pop 0.3s ease;
+  animation:pop 0.2s ease;
 }
 
 @keyframes pop{
-  from{transform:scale(0.7); opacity:0;}
-  to{transform:scale(1); opacity:1;}
+  from{transform:scale(.8);opacity:0;}
+  to{transform:scale(1);opacity:1;}
 }
 
-.success{color:green; font-weight:bold;}
-.error{color:red; font-weight:bold;}
+.success{color:#16a34a;}
+.error{color:#dc2626;}
 
-footer{
-  text-align:center;
-  padding:10px;
-  font-size:12px;
-  color:#777;
-}
 </style>
 </head>
 
@@ -102,13 +104,14 @@ footer{
 
 <header>
 <h2>Presensi Ujian</h2>
-<h3>Madrasah Aliyah Khairussa'adah Kubu</h3>
+<p>Madrasah Aliyah Khairussa'adah Kubu</p>
 </header>
 
 <div class="container">
 
+<div class="card">
 <select id="ruang">
-<option value="">Pilih Ruang Ujian</option>
+<option value="">Pilih Ruang</option>
 <option>Ruang 1</option>
 <option>Ruang 2</option>
 <option>Ruang 3</option>
@@ -139,50 +142,40 @@ footer{
 <button onclick="startScan()">Mulai Scan</button>
 
 <div id="reader"></div>
-
-<div class="dashboard">
-<h3>Dashboard Kehadiran</h3>
-<p>Jumlah Hadir: <b id="totalHadir">0</b></p>
 </div>
 
-<button onclick="window.print()">Cetak Rekap</button>
+<div class="card dashboard">
+Jumlah Hadir Hari Ini:
+<div id="totalHadir">0</div>
+</div>
 
 </div>
 
 <div class="modal" id="modal">
-<div class="modal-content" id="modalContent">
+<div class="modal-content" id="modalContent"></div>
 </div>
-</div>
-
-<footer>
-Sistem Presensi Ujian Digital
-</footer>
 
 <script>
 
-const scriptURL = "https://script.google.com/macros/s/AKfycbxUPtVHRbybU2VNlJ3vKQHVMncdtvR9NIxrysjQKsRW3zo71IVgFMpTePoEBvyAixW9yw/exec";
+const scriptURL = "https://script.google.com/macros/s/AKfycbx7OvskHmTlDxHRDq3v7nL2Wl7OGrSTvql9n8MU8YG2K0xYDtvlnYVC0xMwcyV16lbzYA/exec";
 
 let html5QrCode;
-let sudahScanPertama = false;
+let sudahScanPertama=false;
 
 function bunyiBeep(){
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const oscillator = ctx.createOscillator();
-  const gainNode = ctx.createGain();
-
-  oscillator.connect(gainNode);
-  gainNode.connect(ctx.destination);
-
-  oscillator.type = "sine";
-  oscillator.frequency.value = 1000;
-  gainNode.gain.value = 1;
-
-  oscillator.start();
-  setTimeout(()=>{ oscillator.stop(); }, 150);
+  const ctx=new(window.AudioContext||window.webkitAudioContext)();
+  const osc=ctx.createOscillator();
+  const gain=ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value=1200;
+  gain.gain.value=1;
+  osc.start();
+  setTimeout(()=>osc.stop(),150);
 }
 
 function tampilModal(html){
-  document.getElementById("modalContent").innerHTML = html;
+  document.getElementById("modalContent").innerHTML=html;
   document.getElementById("modal").style.display="flex";
 }
 
@@ -191,62 +184,64 @@ function tutupModal(){
 }
 
 function updateDashboard(){
-  const mapel = document.getElementById("mapel").value;
-  fetch(scriptURL+"?action=dashboard&mapel="+mapel)
+  const mapel=document.getElementById("mapel").value;
+  fetch(scriptURL+"?mode=rekapRuang&mapel="+mapel)
   .then(res=>res.json())
   .then(data=>{
-    document.getElementById("totalHadir").innerText = data.total;
+    document.getElementById("totalHadir").innerText=data.total||0;
   });
 }
 
 function startScan(){
 
-  const ruang = document.getElementById("ruang").value;
-  const mapel = document.getElementById("mapel").value;
+  const ruang=document.getElementById("ruang").value;
+  const mapel=document.getElementById("mapel").value;
 
-  if(!ruang || !mapel){
-    alert("Pilih ruang dan mata pelajaran terlebih dahulu");
+  if(!ruang||!mapel){
+    alert("Pilih ruang dan mata pelajaran dulu");
     return;
   }
 
   if(!sudahScanPertama){
-    document.getElementById("mapel").disabled = true;
-    sudahScanPertama = true;
+    document.getElementById("mapel").disabled=true;
+    sudahScanPertama=true;
   }
 
-  html5QrCode = new Html5Qrcode("reader");
+  html5QrCode=new Html5Qrcode("reader");
+
   html5QrCode.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: 250 },
-    qrCodeMessage => {
+    {facingMode:"environment"},
+    {fps:15,qrbox:250},
+    qrCodeMessage=>{
 
       html5QrCode.stop();
 
-      fetch(scriptURL, {
-        method: "POST",
-        body: JSON.stringify({
-          barcode: qrCodeMessage,
-          mapel: mapel,
-          ruang: ruang
+      fetch(scriptURL,{
+        method:"POST",
+        body:JSON.stringify({
+          nomor:qrCodeMessage,
+          mapel:mapel,
+          ruang:ruang
         })
       })
       .then(res=>res.json())
       .then(res=>{
 
-        if(res.status=="success"){
+        if(res.status==="success"){
           bunyiBeep();
           tampilModal(`
             <h3 class="success">ABSENSI BERHASIL</h3>
             <p><b>${res.nama}</b></p>
             <p>${res.nomor}</p>
             <p>${res.kelas}</p>
-            <button onclick="tutupModal(); startScan();">Scan Lagi</button>
+            <button onclick="tutupModal();startScan()">Scan Lagi</button>
           `);
           updateDashboard();
         }else{
           tampilModal(`
-            <h3 class="error">${res.message}</h3>
-            <button onclick="tutupModal(); startScan();">OK</button>
+            <h3 class="error">ABSENSI GAGAL</h3>
+            <p>${res.status}</p>
+            <button onclick="tutupModal();startScan()">OK</button>
           `);
         }
 
@@ -255,9 +250,7 @@ function startScan(){
     }
   );
 }
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
+
 </script>
 
 </body>
