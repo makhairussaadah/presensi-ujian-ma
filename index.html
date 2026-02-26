@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Presensi Ujian - Madrasah Aliyah Khairussa'adah Kubu</title>
-
+<title>Presensi Ujian - MA Khairussa'adah Kubu</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
@@ -19,15 +18,11 @@ header{
   color:white;
   padding:20px;
   text-align:center;
-  box-shadow:0 3px 10px rgba(0,0,0,0.2);
 }
-
-header h2{margin:0;}
-header p{margin:5px 0 0;font-size:14px;}
 
 .container{
   padding:20px;
-  max-width:600px;
+  max-width:500px;
   margin:auto;
 }
 
@@ -45,7 +40,6 @@ select,button{
   margin-top:10px;
   border-radius:10px;
   border:1px solid #ddd;
-  font-size:14px;
 }
 
 button{
@@ -59,17 +53,6 @@ button:hover{
   background:#166534;
 }
 
-#reader{
-  margin-top:15px;
-}
-
-.dashboard{
-  text-align:center;
-  font-size:18px;
-  font-weight:bold;
-  color:#15803d;
-}
-
 .modal{
   display:none;
   position:fixed;
@@ -81,22 +64,14 @@ button:hover{
 
 .modal-content{
   background:white;
-  padding:25px;
+  padding:20px;
   border-radius:15px;
   width:90%;
   max-width:350px;
   text-align:center;
-  animation:pop 0.2s ease;
 }
-
-@keyframes pop{
-  from{transform:scale(.8);opacity:0;}
-  to{transform:scale(1);opacity:1;}
-}
-
 .success{color:#16a34a;}
 .error{color:#dc2626;}
-
 </style>
 </head>
 
@@ -140,15 +115,11 @@ button:hover{
 </select>
 
 <button onclick="startScan()">Mulai Scan</button>
-
 <div id="reader"></div>
-</div>
 
-<div class="card dashboard">
-Jumlah Hadir Hari Ini:
-<div id="totalHadir">0</div>
-</div>
+<button onclick="downloadRekap()">Download Rekap Hari Ini</button>
 
+</div>
 </div>
 
 <div class="modal" id="modal">
@@ -157,39 +128,26 @@ Jumlah Hadir Hari Ini:
 
 <script>
 
-const scriptURL = "https://script.google.com/macros/s/AKfycbx7OvskHmTlDxHRDq3v7nL2Wl7OGrSTvql9n8MU8YG2K0xYDtvlnYVC0xMwcyV16lbzYA/exec";
-
+const scriptURL="https://script.google.com/macros/s/AKfycbzFtVHX17RxpdMW4JZ6I1r5xCI8Y6P_NkvTdVflcMOCGhqJWdJj5RQB91TqEqcJfHYW1w/exec";
 let html5QrCode;
-let sudahScanPertama=false;
+let scannedCache=new Set();
 
-function bunyiBeep(){
+function beep(){
   const ctx=new(window.AudioContext||window.webkitAudioContext)();
   const osc=ctx.createOscillator();
-  const gain=ctx.createGain();
-  osc.connect(gain);
-  gain.connect(ctx.destination);
+  osc.connect(ctx.destination);
   osc.frequency.value=1200;
-  gain.gain.value=1;
   osc.start();
-  setTimeout(()=>osc.stop(),150);
+  setTimeout(()=>osc.stop(),120);
 }
 
-function tampilModal(html){
+function modal(html){
   document.getElementById("modalContent").innerHTML=html;
   document.getElementById("modal").style.display="flex";
 }
 
-function tutupModal(){
+function closeModal(){
   document.getElementById("modal").style.display="none";
-}
-
-function updateDashboard(){
-  const mapel=document.getElementById("mapel").value;
-  fetch(scriptURL+"?mode=rekapRuang&mapel="+mapel)
-  .then(res=>res.json())
-  .then(data=>{
-    document.getElementById("totalHadir").innerText=data.total||0;
-  });
 }
 
 function startScan(){
@@ -198,50 +156,49 @@ function startScan(){
   const mapel=document.getElementById("mapel").value;
 
   if(!ruang||!mapel){
-    alert("Pilih ruang dan mata pelajaran dulu");
+    alert("Pilih ruang dan mapel dulu");
     return;
-  }
-
-  if(!sudahScanPertama){
-    document.getElementById("mapel").disabled=true;
-    sudahScanPertama=true;
   }
 
   html5QrCode=new Html5Qrcode("reader");
 
   html5QrCode.start(
     {facingMode:"environment"},
-    {fps:15,qrbox:250},
-    qrCodeMessage=>{
-
+    {fps:20,qrbox:250},
+    qr=>{
       html5QrCode.stop();
+
+      if(scannedCache.has(qr)){
+        modal(`<h3 class="error">Sudah Discann</h3>
+        <button onclick="closeModal();startScan()">OK</button>`);
+        return;
+      }
 
       fetch(scriptURL,{
         method:"POST",
         body:JSON.stringify({
-          nomor:qrCodeMessage,
+          nomor:qr,
           mapel:mapel,
           ruang:ruang
         })
       })
-      .then(res=>res.json())
+      .then(r=>r.json())
       .then(res=>{
 
         if(res.status==="success"){
-          bunyiBeep();
-          tampilModal(`
-            <h3 class="success">ABSENSI BERHASIL</h3>
-            <p><b>${res.nama}</b></p>
-            <p>${res.nomor}</p>
-            <p>${res.kelas}</p>
-            <button onclick="tutupModal();startScan()">Scan Lagi</button>
+          scannedCache.add(qr);
+          beep();
+          modal(`
+          <h3 class="success">Berhasil</h3>
+          <p><b>${res.nama}</b></p>
+          <p>${res.nomor}</p>
+          <p>${res.kelas}</p>
+          <button onclick="closeModal();startScan()">Scan Lagi</button>
           `);
-          updateDashboard();
         }else{
-          tampilModal(`
-            <h3 class="error">ABSENSI GAGAL</h3>
-            <p>${res.status}</p>
-            <button onclick="tutupModal();startScan()">OK</button>
+          modal(`
+          <h3 class="error">${res.status}</h3>
+          <button onclick="closeModal();startScan()">OK</button>
           `);
         }
 
@@ -249,6 +206,29 @@ function startScan(){
 
     }
   );
+}
+
+function downloadRekap(){
+  const mapel=document.getElementById("mapel").value;
+  if(!mapel){alert("Pilih mapel dulu");return;}
+
+  fetch(scriptURL+"?mode=download&mapel="+mapel)
+  .then(r=>r.json())
+  .then(res=>{
+    if(res.status==="success"){
+      let csv="Tanggal,Timestamp,Nomor,Nama,Kelas,Ruang,Status\n";
+      res.data.forEach(r=>{
+        csv+=r.join(",")+"\n";
+      });
+
+      const blob=new Blob([csv],{type:"text/csv"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;
+      a.download="Rekap_"+mapel+".csv";
+      a.click();
+    }
+  });
 }
 
 </script>
